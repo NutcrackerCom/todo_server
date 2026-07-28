@@ -8,15 +8,17 @@ import (
 
 const (
 	defaultPort = 7540
+	dbPath      = "scheduler.db"
 )
 
 type Config struct {
 	Port int
+	Db   string
 }
 
 func Load() (Config, error) {
 	port := defaultPort
-
+	db := dbPath
 	value := os.Getenv("TODO_PORT")
 	if value != "" {
 		parse, err := strconv.Atoi(value)
@@ -25,7 +27,9 @@ func Load() (Config, error) {
 		}
 		port = parse
 	}
+
 	return Config{
 		Port: port,
+		Db:   db,
 	}, nil
 }

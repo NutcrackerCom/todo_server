@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/NutcrackerCom/todo_server/backend/internal/db"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -14,7 +15,7 @@ type Server struct {
 	Server http.Server
 }
 
-func NewServer(logger *log.Logger, port int) Server {
+func NewServer(logger *log.Logger, port int, db *db.Db) Server {
 	r := chi.NewRouter()
 
 	r.Handle("/*", http.FileServer(http.Dir("./web")))

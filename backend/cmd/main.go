@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/NutcrackerCom/todo_server/backend/internal/config"
+	"github.com/NutcrackerCom/todo_server/backend/internal/db"
 	"github.com/NutcrackerCom/todo_server/backend/internal/server"
 )
 
@@ -39,9 +40,21 @@ func main() {
 	defer close()
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatalf("Error %v", err)
+		logger.Fatalf("Error in load config %v", err)
 	}
-	appServer := server.NewServer(logger, cfg.Port)
+
+	dataBase, created, err := db.Init(cfg.Db)
+	if err != nil {
+		logger.Fatalf("Error in init Db %v", err)
+	}
+
+	if created {
+		logger.Printf("Database was created")
+	} else {
+		logger.Printf("Database was opened")
+	}
+
+	appServer := server.NewServer(logger, cfg.Port, dataBase)
 
 	if err := appServer.Server.ListenAndServe(); err != nil {
 		logger.Fatalf("Error %v", err)
