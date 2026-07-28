@@ -22,6 +22,7 @@ func NewServer(logger *log.Logger, port int, db *db.Db) Server {
 	r.Post("/api/task", handler.AddTask(db))
 	r.Get("/api/task", handler.GetTask(db))
 	r.Get("/api/tasks", handler.GetTasks(db))
+	r.Put("/api/task", handler.UpdateTask(db))
 	r.Handle("/*", http.FileServer(http.Dir("./web")))
 
 	return Server{

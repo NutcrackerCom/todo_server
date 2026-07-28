@@ -208,3 +208,44 @@ func (s *Db) Tasks(search string, limit int) ([]*Task, error) {
 
 	return tasks, nil
 }
+
+func (s *Db) UpdateTask(task *Task) error {
+	const query = `
+		UPDATE scheduler
+		SET
+			date = ?,
+			title = ?,
+			comment = ?,
+			repeat = ?
+		WHERE id = ?
+	`
+
+	result, err := s.DB.Exec(
+		query,
+		task.Date,
+		task.Title,
+		task.Comment,
+		task.Repeat,
+		task.ID,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"couldn't change issue: %w",
+			err,
+		)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf(
+			"failed to determine the number of modified tasks: %w",
+			err,
+		)
+	}
+
+	if count == 0 {
+		return fmt.Errorf("issue not found")
+	}
+
+	return nil
+}

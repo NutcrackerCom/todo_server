@@ -154,3 +154,49 @@ func GetTasks(storage *db.Db) http.HandlerFunc {
 		})
 	}
 }
+
+func UpdateTask(storage *db.Db) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var task db.Task
+
+		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+			writeTaskError(
+				w,
+				fmt.Errorf("error in reading JSON: %w", err),
+			)
+			return
+		}
+
+		task.ID = strings.TrimSpace(task.ID)
+		task.Title = strings.TrimSpace(task.Title)
+		task.Repeat = strings.TrimSpace(task.Repeat)
+
+		if task.ID == "" {
+			writeTaskError(
+				w,
+				fmt.Errorf("ID not specified"),
+			)
+			return
+		}
+
+		if task.Title == "" {
+			writeTaskError(
+				w,
+				fmt.Errorf("the issue title is not specified"),
+			)
+			return
+		}
+
+		if err := checkTaskDate(&task); err != nil {
+			writeTaskError(w, err)
+			return
+		}
+
+		if err := storage.UpdateTask(&task); err != nil {
+			writeTaskError(w, err)
+			return
+		}
+
+		writeJSON(w, struct{}{})
+	}
+}
