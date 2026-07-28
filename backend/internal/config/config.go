@@ -28,6 +28,11 @@ func Load() (Config, error) {
 		port = parse
 	}
 
+	dbPathVal := os.Getenv("TODO_DBFILE")
+	if dbPathVal != "" {
+		db = dbPathVal
+	}
+
 	return Config{
 		Port: port,
 		Db:   db,

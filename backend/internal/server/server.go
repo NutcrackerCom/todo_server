@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/NutcrackerCom/todo_server/backend/internal/db"
+	"github.com/NutcrackerCom/todo_server/backend/internal/handler"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,7 +18,10 @@ type Server struct {
 
 func NewServer(logger *log.Logger, port int, db *db.Db) Server {
 	r := chi.NewRouter()
-
+	r.Get("/api/nextdate", handler.GetNextDate)
+	r.Post("/api/task", handler.AddTask(db))
+	r.Get("/api/task", handler.GetTask(db))
+	r.Get("/api/tasks", handler.GetTasks(db))
 	r.Handle("/*", http.FileServer(http.Dir("./web")))
 
 	return Server{
