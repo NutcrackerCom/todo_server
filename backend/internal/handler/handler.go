@@ -68,18 +68,18 @@ func checkTaskDate(task *db.Task) error {
 	}
 	taskDate, err := time.Parse(nextdate.DateLayout, task.Date)
 	if err != nil {
-		return fmt.Errorf("incorrect data %q: %w", task.Date, err)
+		return fmt.Errorf("некорректная дата %q: %w", task.Date, err)
 	}
 	today, err := time.Parse(nextdate.DateLayout, todayString)
 	if err != nil {
-		return fmt.Errorf("couldn't determine the current date: %w", err)
+		return fmt.Errorf("не удалось определить текущую дату: %w", err)
 	}
 
 	var nextDate string
 	if task.Repeat != "" {
 		nextDate, err = nextdate.NextDate(now, task.Date, task.Repeat)
 		if err != nil {
-			return fmt.Errorf("incorrect Repeat rule: %w", err)
+			return fmt.Errorf("некорректное правило повторения: %w", err)
 		}
 	}
 
@@ -98,11 +98,11 @@ func AddTask(storage *db.Db) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var task db.Task
 		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-			writeTaskError(w, fmt.Errorf("error in reading JSON: %w", err))
+			writeTaskError(w, fmt.Errorf("ошибка чтения JSON: %w", err))
 			return
 		}
 		if strings.TrimSpace(task.Title) == "" {
-			writeTaskError(w, fmt.Errorf("empty task title"))
+			writeTaskError(w, fmt.Errorf("не указан заголовок задачи"))
 			return
 		}
 		if err := checkTaskDate(&task); err != nil {
@@ -126,7 +126,7 @@ func GetTask(storage *db.Db) http.HandlerFunc {
 		id := strings.TrimSpace(r.URL.Query().Get("id"))
 
 		if id == "" {
-			writeTaskError(w, fmt.Errorf("the ID is not specified"))
+			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
 			return
 		}
 
@@ -162,7 +162,7 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 			writeTaskError(
 				w,
-				fmt.Errorf("error in reading JSON: %w", err),
+				fmt.Errorf("ошибка чтения JSON: %w", err),
 			)
 			return
 		}
@@ -174,7 +174,7 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		if task.ID == "" {
 			writeTaskError(
 				w,
-				fmt.Errorf("ID not specified"),
+				fmt.Errorf("не указан идентификатор"),
 			)
 			return
 		}
@@ -182,7 +182,7 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		if task.Title == "" {
 			writeTaskError(
 				w,
-				fmt.Errorf("the issue title is not specified"),
+				fmt.Errorf("не указан заголовок задачи"),
 			)
 			return
 		}
@@ -193,6 +193,72 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		}
 
 		if err := storage.UpdateTask(&task); err != nil {
+			writeTaskError(w, err)
+			return
+		}
+
+		writeJSON(w, struct{}{})
+	}
+}
+
+func DeleteTask(storage *db.Db) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimSpace(
+			r.URL.Query().Get("id"),
+		)
+
+		if id == "" {
+			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
+			return
+		}
+
+		if err := storage.DeleteTask(id); err != nil {
+			writeTaskError(w, err)
+			return
+		}
+
+		writeJSON(w, struct{}{})
+	}
+}
+
+func DoneTask(storage *db.Db) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimSpace(
+			r.URL.Query().Get("id"),
+		)
+
+		if id == "" {
+			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
+			return
+		}
+
+		task, err := storage.GetTask(id)
+		if err != nil {
+			writeTaskError(w, err)
+			return
+		}
+
+		if task.Repeat == "" {
+			if err := storage.DeleteTask(id); err != nil {
+				writeTaskError(w, err)
+				return
+			}
+
+			writeJSON(w, struct{}{})
+			return
+		}
+
+		nextDate, err := nextdate.NextDate(
+			time.Now(),
+			task.Date,
+			task.Repeat,
+		)
+		if err != nil {
+			writeTaskError(w, fmt.Errorf("не удалось вычислить следующую дату: %w", err))
+			return
+		}
+
+		if err := storage.UpdateDate(nextDate, id); err != nil {
 			writeTaskError(w, err)
 			return
 		}

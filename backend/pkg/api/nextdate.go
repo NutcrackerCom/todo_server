@@ -19,7 +19,7 @@ type monthRule struct {
 func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	start, err := time.Parse(DateLayout, dstart)
 	if err != nil {
-		return "", fmt.Errorf("incorrect date: %w", err)
+		return "", fmt.Errorf("некорректная дата: %w", err)
 	}
 	now = time.Date(
 		now.Year(),
@@ -33,7 +33,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	)
 	parts := strings.Fields(repeat)
 	if len(parts) == 0 {
-		return "", fmt.Errorf("incorrect repeat rule")
+		return "", fmt.Errorf("правило повторения не указано")
 	}
 	switch parts[0] {
 	case "d":
@@ -45,20 +45,20 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	case "m":
 		return nextByMonthDays(now, start, parts)
 	default:
-		return "", fmt.Errorf("incorrect rule %q", parts[0])
+		return "", fmt.Errorf("неподдерживаемое правило %q", parts[0])
 	}
 }
 
 func nextByDays(now time.Time, start time.Time, parts []string) (string, error) {
 	if len(parts) != 2 {
-		return "", fmt.Errorf("incorrect interval format")
+		return "", fmt.Errorf("правило должно иметь формат d <число>")
 	}
 	days, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return "", fmt.Errorf("incorrect format fo days")
+		return "", fmt.Errorf("интервал должен быть числом")
 	}
 	if days < 1 || days > 400 {
-		return "", fmt.Errorf("incorrect number fo days")
+		return "", fmt.Errorf("интервал должен быть от 1 до 400")
 	}
 	next := start.AddDate(0, 0, days)
 
@@ -70,7 +70,7 @@ func nextByDays(now time.Time, start time.Time, parts []string) (string, error) 
 
 func nextByYear(now time.Time, start time.Time, parts []string) (string, error) {
 	if len(parts) != 1 {
-		return "", fmt.Errorf("incorrect interval format")
+		return "", fmt.Errorf("правило y не принимает параметры")
 	}
 
 	next := start.AddDate(1, 0, 0)
@@ -83,21 +83,21 @@ func nextByYear(now time.Time, start time.Time, parts []string) (string, error) 
 
 func nextByWeekdays(now time.Time, start time.Time, parts []string) (string, error) {
 	if len(parts) != 2 {
-		return "", fmt.Errorf("incorrect weekdays format")
+		return "", fmt.Errorf("правило должно иметь формат w <дни недели>")
 	}
 	var allowed [8]bool
 	weekdays := strings.Split(parts[1], ",")
 	for _, value := range weekdays {
 		if value == "" {
-			return "", fmt.Errorf("weekdays is empty")
+			return "", fmt.Errorf("не указан день недели")
 		}
 		weekday, err := strconv.Atoi(value)
 		if err != nil {
-			return "", fmt.Errorf("weekdays %q have to be number", value)
+			return "", fmt.Errorf("день недели %q должен быть числом", value)
 		}
 
 		if weekday < 1 || weekday > 7 {
-			return "", fmt.Errorf("weekday have to be 1 - 7, weekday = %d", weekday)
+			return "", fmt.Errorf("день недели должен быть от 1 до 7")
 		}
 		allowed[weekday] = true
 	}
@@ -124,7 +124,7 @@ func isoWeekday(date time.Time) int {
 
 func nextByMonthDays(now time.Time, start time.Time, parts []string) (string, error) {
 	if len(parts) < 2 || len(parts) > 3 {
-		return "", fmt.Errorf("rule m have to next format: m <day> [month]")
+		return "", fmt.Errorf("правило m должно иметь формат: m <дни> [месяцы]")
 	}
 	rule, err := parseMonthRule(parts)
 	if err != nil {
@@ -156,12 +156,12 @@ func parseMonthRule(parts []string) (monthRule, error) {
 	dayValues := strings.Split(parts[1], ",")
 	for _, value := range dayValues {
 		if value == "" {
-			return monthRule{}, fmt.Errorf("empty month day")
+			return monthRule{}, fmt.Errorf("пустое значение дня месяца")
 		}
 
 		day, err := strconv.Atoi(value)
 		if err != nil {
-			return monthRule{}, fmt.Errorf("month day %q not a number", value)
+			return monthRule{}, fmt.Errorf("день месяца %q не является числом", value)
 		}
 
 		switch {
@@ -175,7 +175,7 @@ func parseMonthRule(parts []string) (monthRule, error) {
 			rule.previousDay = true
 
 		default:
-			return monthRule{}, fmt.Errorf("month day have to be 1 to 31, -1 or -2")
+			return monthRule{}, fmt.Errorf("день месяца должен быть от 1 до 31, -1 или -2")
 		}
 	}
 	if len(parts) == 2 {
@@ -188,16 +188,16 @@ func parseMonthRule(parts []string) (monthRule, error) {
 
 	for _, value := range monthValues {
 		if value == "" {
-			return monthRule{}, fmt.Errorf("empty month")
+			return monthRule{}, fmt.Errorf("пустое значение месяца")
 		}
 
 		month, err := strconv.Atoi(value)
 		if err != nil {
-			return monthRule{}, fmt.Errorf("month %q is not a number", value)
+			return monthRule{}, fmt.Errorf("месяц %q не является числом", value)
 		}
 
 		if month < 1 || month > 12 {
-			return monthRule{}, fmt.Errorf("month have to be 1 to 12")
+			return monthRule{}, fmt.Errorf("месяц должен быть от 1 до 12")
 		}
 
 		rule.months[month] = true

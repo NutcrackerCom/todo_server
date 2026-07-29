@@ -40,18 +40,18 @@ func main() {
 	defer close()
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatalf("Error in load config %v", err)
+		logger.Fatalf("ошибка загрузки настроек %v", err)
 	}
 
 	dataBase, created, err := db.Init(cfg.Db)
 	if err != nil {
-		logger.Fatalf("Error in init Db %v", err)
+		logger.Fatalf("ошибка инициализации базы данных %v", err)
 	}
 
 	if created {
-		logger.Printf("Database was created")
+		logger.Printf("создана база данных")
 	} else {
-		logger.Printf("Database was opened")
+		logger.Printf("открыта база данных ")
 	}
 
 	appServer := server.NewServer(logger, cfg.Port, dataBase)

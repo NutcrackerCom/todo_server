@@ -18,11 +18,13 @@ type Server struct {
 
 func NewServer(logger *log.Logger, port int, db *db.Db) Server {
 	r := chi.NewRouter()
-	r.Get("/api/nextdate", handler.GetNextDate)
+	//r.Get("/api/nextdate", handler.GetNextDate)
 	r.Post("/api/task", handler.AddTask(db))
 	r.Get("/api/task", handler.GetTask(db))
 	r.Get("/api/tasks", handler.GetTasks(db))
 	r.Put("/api/task", handler.UpdateTask(db))
+	r.Delete("/api/task", handler.DeleteTask(db))
+	r.Post("/api/task/done", handler.DoneTask(db))
 	r.Handle("/*", http.FileServer(http.Dir("./web")))
 
 	return Server{

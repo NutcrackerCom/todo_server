@@ -26,7 +26,7 @@ type Db struct {
 
 func (db *Db) createSchema() error {
 	if _, err := db.DB.Exec(schema); err != nil {
-		return fmt.Errorf("Error: %w", err)
+		return fmt.Errorf("не удалось создать структуру базы: %w", err)
 	}
 
 	return nil
@@ -46,15 +46,15 @@ func Init(dbFile string) (*Db, bool, error) {
 	case errors.Is(err, os.ErrNotExist):
 		created = true
 	default:
-		return nil, false, fmt.Errorf("Error in Init Db %w", err)
+		return nil, false, fmt.Errorf("не удалось проверить файл базы %w", err)
 	}
 
 	database, err := sql.Open("sqlite", dbFile)
 	if err != nil {
-		return nil, false, fmt.Errorf("Error in opening Db %w", err)
+		return nil, false, fmt.Errorf("не удалось открыть базу %w", err)
 	}
 	if err := database.Ping(); err != nil {
-		return nil, false, fmt.Errorf("Error in connecting to Db %w", err)
+		return nil, false, fmt.Errorf("не удалось подключиться к базе %w", err)
 	}
 	storage := &Db{
 		DB: database,
@@ -85,12 +85,12 @@ func (db *Db) AddTask(task *Task) (int64, error) {
 		task.Repeat,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("couldn't add task: %w", err)
+		return 0, fmt.Errorf("не удалось добавить задачу: %w", err)
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("couldn't get the issue ID: %w", err)
+		return 0, fmt.Errorf("не удалось получить идентификатор задачи: %w", err)
 	}
 
 	return id, nil
@@ -113,12 +113,12 @@ func (s *Db) GetTask(id string) (*Task, error) {
 		&task.Repeat,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("issue not found")
+		return nil, fmt.Errorf("задача не найдена")
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf(
-			"couldn't get the issue: %w",
+			"не удалось получить задачу: %w",
 			err,
 		)
 	}
@@ -183,7 +183,7 @@ func (s *Db) Tasks(search string, limit int) ([]*Task, error) {
 
 	rows, err := s.DB.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get a list of issues: %w", err)
+		return nil, fmt.Errorf("не удалось получить список задач: %w", err)
 	}
 	defer rows.Close()
 
@@ -197,13 +197,13 @@ func (s *Db) Tasks(search string, limit int) ([]*Task, error) {
 			&task.Comment,
 			&task.Repeat,
 		); err != nil {
-			return nil, fmt.Errorf("couldn't read the issue: %w", err)
+			return nil, fmt.Errorf("не удалось прочитать задач: %w", err)
 		}
 		tasks = append(tasks, &task)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error reading the task list: %w", err)
+		return nil, fmt.Errorf("ошибка чтения списка задач: %w", err)
 	}
 
 	return tasks, nil
@@ -230,7 +230,7 @@ func (s *Db) UpdateTask(task *Task) error {
 	)
 	if err != nil {
 		return fmt.Errorf(
-			"couldn't change issue: %w",
+			"не удалось изменить задачу: %w",
 			err,
 		)
 	}
@@ -238,13 +238,64 @@ func (s *Db) UpdateTask(task *Task) error {
 	count, err := result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf(
-			"failed to determine the number of modified tasks: %w",
+			"не удалось определить количество изменённых задач: %w",
 			err,
 		)
 	}
 
 	if count == 0 {
-		return fmt.Errorf("issue not found")
+		return fmt.Errorf("задача не найдена")
+	}
+
+	return nil
+}
+
+func (s *Db) DeleteTask(id string) error {
+	const query = `
+		DELETE FROM scheduler
+		WHERE id = ?
+	`
+
+	result, err := s.DB.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("не удалось удалить задачу: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("не удалось определить количество удалённых задач: %w", err)
+	}
+
+	if count == 0 {
+		return fmt.Errorf("задача не найдена")
+	}
+
+	return nil
+}
+
+func (s *Db) UpdateDate(nextDate, id string) error {
+	const query = `
+		UPDATE scheduler
+		SET date = ?
+		WHERE id = ?
+	`
+
+	result, err := s.DB.Exec(
+		query,
+		nextDate,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("не удалось изменить дату задачи: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("не удалось определить количество изменённых задач: %w", err)
+	}
+
+	if count == 0 {
+		return fmt.Errorf("задача не найдена")
 	}
 
 	return nil
