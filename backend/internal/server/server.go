@@ -16,15 +16,19 @@ type Server struct {
 	Server http.Server
 }
 
-func NewServer(logger *log.Logger, port int, db *db.Db) Server {
+func NewServer(logger *log.Logger, port int, db *db.Db, password string) Server {
 	r := chi.NewRouter()
-	//r.Get("/api/nextdate", handler.GetNextDate)
-	r.Post("/api/task", handler.AddTask(db))
-	r.Get("/api/task", handler.GetTask(db))
-	r.Get("/api/tasks", handler.GetTasks(db))
-	r.Put("/api/task", handler.UpdateTask(db))
-	r.Delete("/api/task", handler.DeleteTask(db))
-	r.Post("/api/task/done", handler.DoneTask(db))
+	r.Post("/api/signin", handler.SignIn(password))
+	r.Group(func(protected chi.Router) {
+		protected.Use(handler.RequireAuth(password))
+		protected.Post("/api/task", handler.AddTask(db))
+		protected.Get("/api/task", handler.GetTask(db))
+		protected.Get("/api/tasks", handler.GetTasks(db))
+		protected.Put("/api/task", handler.UpdateTask(db))
+		protected.Delete("/api/task", handler.DeleteTask(db))
+		protected.Post("/api/task/done", handler.DoneTask(db))
+	})
+
 	r.Handle("/*", http.FileServer(http.Dir("./web")))
 
 	return Server{

@@ -54,7 +54,7 @@ func main() {
 		logger.Printf("открыта база данных ")
 	}
 
-	appServer := server.NewServer(logger, cfg.Port, dataBase)
+	appServer := server.NewServer(logger, cfg.Port, dataBase, cfg.Password)
 
 	if err := appServer.Server.ListenAndServe(); err != nil {
 		logger.Fatalf("Error %v", err)

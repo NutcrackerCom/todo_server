@@ -12,8 +12,9 @@ const (
 )
 
 type Config struct {
-	Port int
-	Db   string
+	Port     int
+	Db       string
+	Password string
 }
 
 func Load() (Config, error) {
@@ -23,7 +24,7 @@ func Load() (Config, error) {
 	if value != "" {
 		parse, err := strconv.Atoi(value)
 		if err != nil {
-			return Config{}, fmt.Errorf("Error TODO_PORT %q: %w", value, err)
+			return Config{}, fmt.Errorf("некорректное значение TODO_PORT %q: %w", value, err)
 		}
 		port = parse
 	}
@@ -34,7 +35,8 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		Port: port,
-		Db:   db,
+		Port:     port,
+		Db:       db,
+		Password: os.Getenv("TODO_PASSWORD"),
 	}, nil
 }

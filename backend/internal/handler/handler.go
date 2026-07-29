@@ -160,10 +160,7 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		var task db.Task
 
 		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-			writeTaskError(
-				w,
-				fmt.Errorf("ошибка чтения JSON: %w", err),
-			)
+			writeTaskError(w, fmt.Errorf("ошибка чтения JSON: %w", err))
 			return
 		}
 
@@ -172,18 +169,12 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		task.Repeat = strings.TrimSpace(task.Repeat)
 
 		if task.ID == "" {
-			writeTaskError(
-				w,
-				fmt.Errorf("не указан идентификатор"),
-			)
+			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
 			return
 		}
 
 		if task.Title == "" {
-			writeTaskError(
-				w,
-				fmt.Errorf("не указан заголовок задачи"),
-			)
+			writeTaskError(w, fmt.Errorf("не указан заголовок задачи"))
 			return
 		}
 
