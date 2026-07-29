@@ -21,6 +21,7 @@ func NewServer(logger *log.Logger, port int, db *db.Db, password string) Server 
 	r.Post("/api/signin", handler.SignIn(password))
 	r.Group(func(protected chi.Router) {
 		protected.Use(handler.RequireAuth(password))
+		protected.Get("/api/nextdate", handler.GetNextDate)
 		protected.Post("/api/task", handler.AddTask(db))
 		protected.Get("/api/task", handler.GetTask(db))
 		protected.Get("/api/tasks", handler.GetTasks(db))
