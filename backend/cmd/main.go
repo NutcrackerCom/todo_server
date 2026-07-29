@@ -47,6 +47,11 @@ func main() {
 	if err != nil {
 		logger.Fatalf("ошибка инициализации базы данных %v", err)
 	}
+	defer func() {
+		if err := dataBase.Close(); err != nil {
+			logger.Printf("ошибка закрытия базы данных: %v", err)
+		}
+	}()
 
 	if created {
 		logger.Printf("создана база данных")

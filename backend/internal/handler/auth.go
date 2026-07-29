@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -98,27 +99,27 @@ func validateToken(tokenString, password string) bool {
 	return subtle.ConstantTimeCompare([]byte(claims.PasswordHash), []byte(expectedHash)) == 1
 }
 
-func SignIn(password string) http.HandlerFunc {
+func SignIn(password string, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request signInRequest
 
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			writeJSON(w, signInResponse{Error: "Некорректный JSON"})
+			writeJSON(w, logger, http.StatusBadRequest, signInResponse{Error: "Некорректный JSON"})
 			return
 		}
 
 		if !passwordsEqual(request.Password, password) {
-			writeJSON(w, signInResponse{Error: "Неверный пароль"})
+			writeJSON(w, logger, http.StatusBadRequest, signInResponse{Error: "Неверный пароль"})
 			return
 		}
 
 		token, err := createToken(password)
 		if err != nil {
-			writeJSON(w, signInResponse{Error: fmt.Sprintf("Не удалось создать токен: %v", err)})
+			writeJSON(w, logger, http.StatusInternalServerError, signInResponse{Error: fmt.Sprintf("Не удалось создать токен: %v", err)})
 			return
 		}
 
-		writeJSON(w, signInResponse{
+		writeJSON(w, logger, http.StatusOK, signInResponse{
 			Token: token,
 		})
 	}

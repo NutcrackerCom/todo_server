@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -45,17 +46,21 @@ func GetNextDate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(nextDate))
 }
 
-func writeJSON(w http.ResponseWriter, data any) {
+func writeJSON(w http.ResponseWriter, logger *log.Logger, statusCode int, data any) {
 	w.Header().Set(
 		"Content-Type",
 		"application/json; charset=UTF-8",
 	)
 
-	_ = json.NewEncoder(w).Encode(data)
+	w.WriteHeader(statusCode)
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Printf("не удалось записать JSON-ответ, status=%d: %v", statusCode, err)
+	}
 }
 
-func writeTaskError(w http.ResponseWriter, err error) {
-	writeJSON(w, taskResponse{
+func writeTaskError(w http.ResponseWriter, logger *log.Logger, statusCode int, err error) {
+	writeJSON(w, logger, statusCode, taskResponse{
 		Error: err.Error(),
 	})
 }
@@ -94,73 +99,73 @@ func checkTaskDate(task *db.Task) error {
 	return nil
 }
 
-func AddTask(storage *db.Db) http.HandlerFunc {
+func AddTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var task db.Task
 		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-			writeTaskError(w, fmt.Errorf("ошибка чтения JSON: %w", err))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("ошибка чтения JSON: %w", err))
 			return
 		}
 		if strings.TrimSpace(task.Title) == "" {
-			writeTaskError(w, fmt.Errorf("не указан заголовок задачи"))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("не указан заголовок задачи"))
 			return
 		}
 		if err := checkTaskDate(&task); err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusBadRequest, err)
 			return
 		}
 		id, err := storage.AddTask(&task)
 		if err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusInternalServerError, err)
 			return
 		}
 
-		writeJSON(w, taskResponse{
+		writeJSON(w, logger, http.StatusCreated, taskResponse{
 			ID: strconv.FormatInt(id, 10),
 		})
 	}
 }
 
-func GetTask(storage *db.Db) http.HandlerFunc {
+func GetTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSpace(r.URL.Query().Get("id"))
 
 		if id == "" {
-			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("не указан идентификатор"))
 			return
 		}
 
 		task, err := storage.GetTask(id)
 		if err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusNotFound, err)
 			return
 		}
-		writeJSON(w, task)
+		writeJSON(w, logger, http.StatusOK, task)
 	}
 }
 
-func GetTasks(storage *db.Db) http.HandlerFunc {
+func GetTasks(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		search := r.URL.Query().Get("search")
 
 		tasks, err := storage.Tasks(search, 50)
 		if err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusInternalServerError, err)
 			return
 		}
 
-		writeJSON(w, tasksResponse{
+		writeJSON(w, logger, http.StatusOK, tasksResponse{
 			Tasks: tasks,
 		})
 	}
 }
 
-func UpdateTask(storage *db.Db) http.HandlerFunc {
+func UpdateTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var task db.Task
 
 		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-			writeTaskError(w, fmt.Errorf("ошибка чтения JSON: %w", err))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("ошибка чтения JSON: %w", err))
 			return
 		}
 
@@ -169,73 +174,73 @@ func UpdateTask(storage *db.Db) http.HandlerFunc {
 		task.Repeat = strings.TrimSpace(task.Repeat)
 
 		if task.ID == "" {
-			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("не указан идентификатор"))
 			return
 		}
 
 		if task.Title == "" {
-			writeTaskError(w, fmt.Errorf("не указан заголовок задачи"))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("не указан заголовок задачи"))
 			return
 		}
 
 		if err := checkTaskDate(&task); err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusNotFound, err)
 			return
 		}
 
 		if err := storage.UpdateTask(&task); err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusInternalServerError, err)
 			return
 		}
 
-		writeJSON(w, struct{}{})
+		writeJSON(w, logger, http.StatusOK, struct{}{})
 	}
 }
 
-func DeleteTask(storage *db.Db) http.HandlerFunc {
+func DeleteTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSpace(
 			r.URL.Query().Get("id"),
 		)
 
 		if id == "" {
-			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("не указан идентификатор"))
 			return
 		}
 
 		if err := storage.DeleteTask(id); err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusNotFound, err)
 			return
 		}
 
-		writeJSON(w, struct{}{})
+		writeJSON(w, logger, http.StatusOK, struct{}{})
 	}
 }
 
-func DoneTask(storage *db.Db) http.HandlerFunc {
+func DoneTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSpace(
 			r.URL.Query().Get("id"),
 		)
 
 		if id == "" {
-			writeTaskError(w, fmt.Errorf("не указан идентификатор"))
+			writeTaskError(w, logger, http.StatusBadRequest, fmt.Errorf("не указан идентификатор"))
 			return
 		}
 
 		task, err := storage.GetTask(id)
 		if err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusNotFound, err)
 			return
 		}
 
 		if task.Repeat == "" {
 			if err := storage.DeleteTask(id); err != nil {
-				writeTaskError(w, err)
+				writeTaskError(w, logger, http.StatusInternalServerError, err)
 				return
 			}
 
-			writeJSON(w, struct{}{})
+			writeJSON(w, logger, http.StatusInternalServerError, struct{}{})
 			return
 		}
 
@@ -245,15 +250,15 @@ func DoneTask(storage *db.Db) http.HandlerFunc {
 			task.Repeat,
 		)
 		if err != nil {
-			writeTaskError(w, fmt.Errorf("не удалось вычислить следующую дату: %w", err))
+			writeTaskError(w, logger, http.StatusInternalServerError, fmt.Errorf("не удалось вычислить следующую дату: %w", err))
 			return
 		}
 
 		if err := storage.UpdateDate(nextDate, id); err != nil {
-			writeTaskError(w, err)
+			writeTaskError(w, logger, http.StatusInternalServerError, err)
 			return
 		}
 
-		writeJSON(w, struct{}{})
+		writeJSON(w, logger, http.StatusOK, struct{}{})
 	}
 }

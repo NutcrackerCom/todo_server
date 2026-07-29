@@ -237,10 +237,7 @@ func (s *Db) UpdateTask(task *Task) error {
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf(
-			"не удалось определить количество изменённых задач: %w",
-			err,
-		)
+		return fmt.Errorf("не удалось определить количество изменённых задач: %w", err)
 	}
 
 	if count == 0 {
