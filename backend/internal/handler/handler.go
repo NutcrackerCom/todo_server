@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -137,7 +138,13 @@ func GetTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 
 		task, err := storage.GetTask(id)
 		if err != nil {
-			writeTaskError(w, logger, http.StatusNotFound, err)
+			switch {
+			case errors.Is(err, db.ErrTaskNotFound):
+				writeTaskError(w, logger, http.StatusNotFound, err)
+			case errors.Is(err, db.ErrGetTask):
+				writeTaskError(w, logger, http.StatusInternalServerError, err)
+			}
+
 			return
 		}
 		writeJSON(w, logger, http.StatusOK, task)
@@ -209,7 +216,13 @@ func DeleteTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 		}
 
 		if err := storage.DeleteTask(id); err != nil {
-			writeTaskError(w, logger, http.StatusNotFound, err)
+			switch {
+			case errors.Is(err, db.ErrTaskNotFound):
+				writeTaskError(w, logger, http.StatusNotFound, err)
+			default:
+				writeTaskError(w, logger, http.StatusInternalServerError, err)
+			}
+
 			return
 		}
 
@@ -230,13 +243,24 @@ func DoneTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 
 		task, err := storage.GetTask(id)
 		if err != nil {
-			writeTaskError(w, logger, http.StatusNotFound, err)
+			switch {
+			case errors.Is(err, db.ErrGetTask):
+				writeTaskError(w, logger, http.StatusInternalServerError, err)
+			case errors.Is(err, db.ErrTaskNotFound):
+				writeTaskError(w, logger, http.StatusNotFound, err)
+			}
+
 			return
 		}
 
 		if task.Repeat == "" {
 			if err := storage.DeleteTask(id); err != nil {
-				writeTaskError(w, logger, http.StatusInternalServerError, err)
+				switch {
+				case errors.Is(err, db.ErrTaskNotFound):
+					writeTaskError(w, logger, http.StatusNotFound, err)
+				default:
+					writeTaskError(w, logger, http.StatusInternalServerError, err)
+				}
 				return
 			}
 
@@ -255,7 +279,12 @@ func DoneTask(storage *db.Db, logger *log.Logger) http.HandlerFunc {
 		}
 
 		if err := storage.UpdateDate(nextDate, id); err != nil {
-			writeTaskError(w, logger, http.StatusInternalServerError, err)
+			switch {
+			case errors.Is(err, db.ErrTaskNotFound):
+				writeTaskError(w, logger, http.StatusNotFound, err)
+			default:
+				writeTaskError(w, logger, http.StatusInternalServerError, err)
+			}
 			return
 		}
 

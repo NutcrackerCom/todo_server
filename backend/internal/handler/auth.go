@@ -109,7 +109,7 @@ func SignIn(password string, logger *log.Logger) http.HandlerFunc {
 		}
 
 		if !passwordsEqual(request.Password, password) {
-			writeJSON(w, logger, http.StatusBadRequest, signInResponse{Error: "Неверный пароль"})
+			writeJSON(w, logger, http.StatusUnauthorized, signInResponse{Error: "Неверный пароль"})
 			return
 		}
 

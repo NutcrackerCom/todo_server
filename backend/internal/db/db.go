@@ -20,13 +20,20 @@ CREATE TABLE IF NOT EXISTS scheduler (
 );
 	`
 
+var (
+	ErrTaskNotFound = errors.New("задача не найдена")
+	ErrGetTask      = errors.New("не удалось получить задачу")
+	ErrDeleteTask   = errors.New("не удалось удалить задачу")
+	ErrUpdateTask   = errors.New("не удалось изменить задачу")
+)
+
 type Db struct {
 	DB *sql.DB
 }
 
 func (db *Db) createSchema() error {
 	if _, err := db.DB.Exec(schema); err != nil {
-		return fmt.Errorf("не удалось создать структуру базы: %w", err)
+		return fmt.Errorf("не удалось создать структуру базы")
 	}
 
 	return nil
@@ -46,15 +53,15 @@ func Init(dbFile string) (*Db, bool, error) {
 	case errors.Is(err, os.ErrNotExist):
 		created = true
 	default:
-		return nil, false, fmt.Errorf("не удалось проверить файл базы %w", err)
+		return nil, false, fmt.Errorf("не удалось проверить файл базы")
 	}
 
 	database, err := sql.Open("sqlite", dbFile)
 	if err != nil {
-		return nil, false, fmt.Errorf("не удалось открыть базу %w", err)
+		return nil, false, fmt.Errorf("не удалось открыть базу")
 	}
 	if err := database.Ping(); err != nil {
-		return nil, false, fmt.Errorf("не удалось подключиться к базе %w", err)
+		return nil, false, fmt.Errorf("не удалось подключиться к базе")
 	}
 	storage := &Db{
 		DB: database,
@@ -85,12 +92,12 @@ func (db *Db) AddTask(task *Task) (int64, error) {
 		task.Repeat,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("не удалось добавить задачу: %w", err)
+		return 0, fmt.Errorf("не удалось добавить задачу")
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("не удалось получить идентификатор задачи: %w", err)
+		return 0, fmt.Errorf("не удалось получить идентификатор задачи")
 	}
 
 	return id, nil
@@ -113,14 +120,11 @@ func (s *Db) GetTask(id string) (*Task, error) {
 		&task.Repeat,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("задача не найдена")
+		return nil, ErrTaskNotFound
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf(
-			"не удалось получить задачу: %w",
-			err,
-		)
+		return nil, ErrGetTask
 	}
 
 	return &task, nil
@@ -183,7 +187,7 @@ func (s *Db) Tasks(search string, limit int) ([]*Task, error) {
 
 	rows, err := s.DB.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("не удалось получить список задач: %w", err)
+		return nil, fmt.Errorf("не удалось получить список задач")
 	}
 	defer rows.Close()
 
@@ -197,13 +201,13 @@ func (s *Db) Tasks(search string, limit int) ([]*Task, error) {
 			&task.Comment,
 			&task.Repeat,
 		); err != nil {
-			return nil, fmt.Errorf("не удалось прочитать задач: %w", err)
+			return nil, fmt.Errorf("не удалось прочитать задач")
 		}
 		tasks = append(tasks, &task)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("ошибка чтения списка задач: %w", err)
+		return nil, fmt.Errorf("ошибка чтения списка задач")
 	}
 
 	return tasks, nil
@@ -229,19 +233,16 @@ func (s *Db) UpdateTask(task *Task) error {
 		task.ID,
 	)
 	if err != nil {
-		return fmt.Errorf(
-			"не удалось изменить задачу: %w",
-			err,
-		)
+		return ErrUpdateTask
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("не удалось определить количество изменённых задач: %w", err)
+		return fmt.Errorf("не удалось определить количество изменённых задач")
 	}
 
 	if count == 0 {
-		return fmt.Errorf("задача не найдена")
+		return ErrTaskNotFound
 	}
 
 	return nil
@@ -255,16 +256,16 @@ func (s *Db) DeleteTask(id string) error {
 
 	result, err := s.DB.Exec(query, id)
 	if err != nil {
-		return fmt.Errorf("не удалось удалить задачу: %w", err)
+		return ErrDeleteTask
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("не удалось определить количество удалённых задач: %w", err)
+		return fmt.Errorf("не удалось определить количество удалённых задач")
 	}
 
 	if count == 0 {
-		return fmt.Errorf("задача не найдена")
+		return ErrTaskNotFound
 	}
 
 	return nil
@@ -283,16 +284,16 @@ func (s *Db) UpdateDate(nextDate, id string) error {
 		id,
 	)
 	if err != nil {
-		return fmt.Errorf("не удалось изменить дату задачи: %w", err)
+		return fmt.Errorf("не удалось изменить дату задачи")
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("не удалось определить количество изменённых задач: %w", err)
+		return fmt.Errorf("не удалось определить количество изменённых задач")
 	}
 
 	if count == 0 {
-		return fmt.Errorf("задача не найдена")
+		return ErrTaskNotFound
 	}
 
 	return nil
