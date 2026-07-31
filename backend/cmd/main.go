@@ -43,7 +43,7 @@ func main() {
 		logger.Fatalf("ошибка загрузки настроек %v", err)
 	}
 
-	dataBase, created, err := db.Init(cfg.Db)
+	dataBase, created, err := db.Init(cfg.Db, logger)
 	if err != nil {
 		logger.Fatalf("ошибка инициализации базы данных %v", err)
 	}

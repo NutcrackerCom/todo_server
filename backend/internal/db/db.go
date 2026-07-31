@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -43,7 +44,7 @@ func (db *Db) Close() error {
 	return db.DB.Close()
 }
 
-func Init(dbFile string) (*Db, bool, error) {
+func Init(dbFile string, logger *log.Logger) (*Db, bool, error) {
 	var created bool
 	_, err := os.Stat(dbFile)
 
@@ -53,14 +54,17 @@ func Init(dbFile string) (*Db, bool, error) {
 	case errors.Is(err, os.ErrNotExist):
 		created = true
 	default:
+		logger.Printf("не удалось открыть базу %v", err)
 		return nil, false, fmt.Errorf("не удалось проверить файл базы")
 	}
 
 	database, err := sql.Open("sqlite", dbFile)
 	if err != nil {
+		logger.Printf("не удалось открыть базу: %v", err)
 		return nil, false, fmt.Errorf("не удалось открыть базу")
 	}
 	if err := database.Ping(); err != nil {
+		logger.Printf("не удалось подключиться к базе: %v", err)
 		return nil, false, fmt.Errorf("не удалось подключиться к базе")
 	}
 	storage := &Db{
