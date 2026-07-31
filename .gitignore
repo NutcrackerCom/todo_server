@@ -1,0 +1,18 @@
+# Логи
+logs/
+*.log
+
+# Переменные окружения
+.env
+.env.local
+
+# Скомпилированные файлы
+todo_list
+todo_list.exe
+*.exe
+*.out
+
+# База данных
+*.db
+*.sqlite
+*.sqlite3
